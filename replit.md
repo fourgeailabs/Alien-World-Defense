@@ -1,15 +1,12 @@
-# [Project name]
+# Alien World Defense
 
-_Replace the heading above with the project's name, and this line with one sentence describing what this app does for users._
+An original mobile sci-fi defense game where players choose an alien homeworld and resist a human invasion.
 
 ## Run & Operate
 
-- `pnpm --filter @workspace/api-server run dev` — run the API server (port 5000)
+- `pnpm --filter @workspace/alien-world-defense run dev` — run the mobile game preview
 - `pnpm run typecheck` — full typecheck across all packages
 - `pnpm run build` — typecheck + build all packages
-- `pnpm --filter @workspace/api-spec run codegen` — regenerate API hooks and Zod schemas from the OpenAPI spec
-- `pnpm --filter @workspace/db run push` — push DB schema changes (dev only)
-- Required env: `DATABASE_URL` — Postgres connection string
 
 ## Stack
 
@@ -22,23 +19,26 @@ _Replace the heading above with the project's name, and this line with one sente
 
 ## Where things live
 
-_Populate as you build — short repo map plus pointers to the source-of-truth file for DB schema, API contracts, theme files, etc._
+- `artifacts/alien-world-defense/app/index.tsx` — full playable game flow: selection, briefing, tutorial, and first mission
+- `artifacts/alien-world-defense/assets/` — original generated world art, icon, score, effects, and character lines
+- `artifacts/alien-world-defense/constants/colors.ts` — mobile visual tokens
 
 ## Architecture decisions
 
-_Populate as you build — non-obvious choices a reader couldn't infer from the code (3-5 bullets)._
+- The first release is offline-first and contains no backend: player selection and the opening sequence are local, which keeps the playable preview fast.
+- The experience is an original alien-defense setting; it deliberately avoids copying Halo's characters, worlds, dialogue, assets, or story.
+- The first mission is a polished vertical slice; future campaign content can expand the data-driven world and enemy definitions.
 
 ## Product
 
-_Describe the high-level user-facing capabilities of this app once they exist._
-
-## User preferences
-
-_Populate as you build — explicit user instructions worth remembering across sessions._
+- Six original worlds/species choices, each with a distinct alien ability concept.
+- A voiced cinematic opening, a weaponless onboarding sequence, and a first combat encounter after the defense shard is unlocked.
+- Landscape touch HUD, aim/move gesture zones, haptic responses, music, weapon effects, and a controller mapping view.
 
 ## Gotchas
 
-_Populate as you build — sharp edges, "always run X before Y" rules._
+- Expo mobile game previews use the managed `artifacts/alien-world-defense: expo` workflow. Do not start Expo from the workspace root.
+- Audio is provided by `expo-audio`, aligned to Expo SDK 57.
 
 ## Pointers
 

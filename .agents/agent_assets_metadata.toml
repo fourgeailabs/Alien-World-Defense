@@ -1,0 +1,30 @@
+uploads = []
+generated = []
+
+[[outputs]]
+id = "HD3Xr0g61lU5HtLlyfZQ9"
+uri = "file://attached_assets/generated_audio/energy-pulse.mp3"
+type = "audio"
+title = "energy pulse"
+description = "Generated sound effect: Original short alien energy pulse weapon activation, organic crystalline charge rising into a focused luminous blast, premium science fiction game sound effect"
+
+[[outputs]]
+id = "7Yz4RBHgtCJlvbaJ2TIU-"
+uri = "file://attached_assets/generated_audio/alien-defense-theme.mp3"
+type = "audio"
+title = "alien defense theme"
+description = "Generated music: Original instrumental sci fi game score, tense but heroic, deep alien drums, pulsing analog synth bass, distant ethereal vocal textures without words, cinematic evolving atmosphere f…"
+
+[[outputs]]
+id = "b-f3035t_zKZ5Wh4MPTSq"
+uri = "file://attached_assets/generated_audio/commander-shard.mp3"
+type = "audio"
+title = "commander shard"
+description = "Text-to-speech audio: The resonance shard is awake. Take its power. Protect Nyxara."
+
+[[outputs]]
+id = "kNms35AfvV_HkItaG501V"
+uri = "file://attached_assets/generated_audio/commander-arrival.mp3"
+type = "audio"
+title = "commander arrival"
+description = "Text-to-speech audio: Wake, defender. Your world has chosen you. The invaders are already in the valley."

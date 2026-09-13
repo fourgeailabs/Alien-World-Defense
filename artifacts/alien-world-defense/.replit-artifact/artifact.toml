@@ -1,0 +1,24 @@
+kind = "mobile"
+previewPath = "/"
+title = "Alien World Defense"
+description = "An original first-person alien-defense game for Android. Choose one of six worlds and alien species, learn movement and powers without weapons, then protect your civilization from an invading human marine force using touch or compatible controllers."
+version = "1.0.0"
+id = "artifacts/alien-world-defense"
+router = "expo-domain"
+
+[[services]]
+name = "expo"
+ensurePreviewReachable = "/status"
+paths = [ "/" ]
+localPort = 21625
+
+[services.development]
+run = "pnpm --filter @workspace/alien-world-defense run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/alien-world-defense", "run", "build" ]
+run = [ "pnpm", "--filter", "@workspace/alien-world-defense", "run", "serve" ]
+
+[services.env]
+PORT = "21625"
+BASE_PATH = "/"
