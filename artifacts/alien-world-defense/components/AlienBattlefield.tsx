@@ -10,7 +10,15 @@ type BattlefieldProps = {
   enemyCount: number;
   tutorial: boolean;
   pulseCount: number;
+  missionIndex: number;
 };
+
+const missionAtmospheres = [
+  { terrain: '#0A2833', fog: '#09212D', moon: '#123646', glow: '#14D6C3' },
+  { terrain: '#273022', fog: '#1C2C1E', moon: '#2B4228', glow: '#B7ED77' },
+  { terrain: '#102A46', fog: '#0A1A33', moon: '#183C5D', glow: '#57B7FF' },
+  { terrain: '#35212B', fog: '#25141D', moon: '#4C2535', glow: '#FF735F' },
+];
 
 const crystalSites: [number, number, number, number][] = [
   [-8, 0, -13, 2.7], [-5, 0, -7, 1.7], [-2, 0, -18, 3.4], [2, 0, -10, 2.1],
@@ -62,8 +70,9 @@ function Pulse() {
   return <mesh ref={ring} position={[0, 1.5, 3]} rotation={[Math.PI / 2, 0, 0]}><ringGeometry args={[0.26, 0.38, 28]} /><meshBasicMaterial color="#8DFFF1" transparent opacity={0} /></mesh>;
 }
 
-function Scene({ aim, moving, enemyCount, tutorial, pulseCount }: BattlefieldProps) {
+function Scene({ aim, moving, enemyCount, tutorial, pulseCount, missionIndex }: BattlefieldProps) {
   const cameraRig = useRef<THREE.Group>(null!);
+  const atmosphere = missionAtmospheres[missionIndex] ?? missionAtmospheres[0];
   const stars = useMemo(() => Array.from({ length: 70 }, (_, index) => ({
     x: ((index * 47) % 37) - 18, y: 4 + ((index * 31) % 16) / 2, z: -24 - ((index * 17) % 24),
   })), []);
@@ -78,10 +87,10 @@ function Scene({ aim, moving, enemyCount, tutorial, pulseCount }: BattlefieldPro
   return (
     <>
       <color attach="background" args={['#04101A']} />
-      <fog attach="fog" args={['#09212D', 9, 35]} />
+      <fog attach="fog" args={[atmosphere.fog, 9, 35]} />
       <ambientLight intensity={0.42} color="#6FD3E9" />
       <directionalLight position={[6, 10, 5]} intensity={2.2} color="#A9FFF3" castShadow />
-      <pointLight position={[-5, 3, -9]} intensity={24} distance={13} color="#14D6C3" />
+      <pointLight position={[-5, 3, -9]} intensity={24} distance={13} color={atmosphere.glow} />
       <pointLight position={[4, 2, -12]} intensity={10} distance={10} color="#FF7056" />
       <group ref={cameraRig}>
         <mesh position={[0.6, -0.35, 1.7]} rotation={[0.3, 0.7, 0]}>
@@ -91,7 +100,7 @@ function Scene({ aim, moving, enemyCount, tutorial, pulseCount }: BattlefieldPro
       </group>
       <mesh rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
         <planeGeometry args={[65, 65, 32, 32]} />
-        <meshStandardMaterial color="#0A2833" roughness={0.86} metalness={0.2} />
+        <meshStandardMaterial color={atmosphere.terrain} roughness={0.86} metalness={0.2} />
       </mesh>
       <mesh position={[0, -0.07, -12]} rotation={[-Math.PI / 2, 0, 0]}>
         <circleGeometry args={[5.2, 32]} />
@@ -99,7 +108,7 @@ function Scene({ aim, moving, enemyCount, tutorial, pulseCount }: BattlefieldPro
       </mesh>
       {crystalSites.map(([x, , z, scale]) => <Crystal key={`${x}-${z}`} position={[x, 0, z]} scale={scale} />)}
       {tutorial ? [-4, 0, 4].map((x, index) => <group key={x} position={[x, 1.7, -9 - index * 2]}><mesh><octahedronGeometry args={[0.45, 1]} /><meshStandardMaterial color="#9FFFF2" emissive="#20D9C4" emissiveIntensity={2.5} /></mesh><pointLight color="#2CE0C6" intensity={8} distance={5} /></group>) : Array.from({ length: enemyCount }).map((_, index) => <Walker key={index} index={index} />)}
-      <group position={[0, 9, -25]}><mesh><sphereGeometry args={[4.3, 32, 32]} /><meshBasicMaterial color="#123646" /></mesh><mesh position={[0.5, 0.1, 4]}><torusGeometry args={[5.6, 0.12, 8, 64]} /><meshBasicMaterial color="#2CE0C6" transparent opacity={0.5} /></mesh></group>
+      <group position={[0, 9, -25]}><mesh><sphereGeometry args={[4.3, 32, 32]} /><meshBasicMaterial color={atmosphere.moon} /></mesh><mesh position={[0.5, 0.1, 4]}><torusGeometry args={[5.6, 0.12, 8, 64]} /><meshBasicMaterial color={atmosphere.glow} transparent opacity={0.5} /></mesh></group>
       {stars.map((star, index) => <mesh key={index} position={[star.x, star.y, star.z]}><sphereGeometry args={[0.028, 5, 5]} /><meshBasicMaterial color="#C7FFF8" /></mesh>)}
       {pulseCount > 0 ? <Pulse key={pulseCount} /> : null}
     </>

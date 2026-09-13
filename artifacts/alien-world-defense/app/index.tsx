@@ -2,13 +2,13 @@ import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useAudioPlayer, setAudioModeAsync } from 'expo-audio';
 import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
-import { ImageBackground, PanResponder, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ImageBackground, NativeSyntheticEvent, PanResponder, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useColors } from '@/hooks/useColors';
 import { AlienBattlefield } from '@/components/AlienBattlefield';
 
-type Phase = 'selection' | 'briefing' | 'tutorial' | 'mission' | 'victory';
+type Phase = 'selection' | 'briefing' | 'campaign' | 'tutorial' | 'mission' | 'debrief';
 
 type World = {
   id: string;
@@ -19,6 +19,8 @@ type World = {
   color: string;
 };
 
+type GameKeyEvent = NativeSyntheticEvent<{ key: string; code: string; repeat?: boolean }>;
+
 const worlds: World[] = [
   { id: 'nyxara', name: 'Nyxara', type: 'Crystal Tides', species: 'Veyli', ability: 'Resonance pulse', color: '#2CE0C6' },
   { id: 'orvos', name: 'Orvos', type: 'Iron Canopy', species: 'Korr', ability: 'Stone shield', color: '#D5A553' },
@@ -26,6 +28,13 @@ const worlds: World[] = [
   { id: 'sath', name: 'Sath', type: 'Ash Moon', species: 'Sathen', ability: 'Ember coil', color: '#FF8A5B' },
   { id: 'eol', name: 'Eol', type: 'Cloud Archipelago', species: 'Myr', ability: 'Glide burst', color: '#D2B6FF' },
   { id: 'talun', name: 'Talun', type: 'Frozen Basin', species: 'Graal', ability: 'Frost field', color: '#B3E7EA' },
+];
+
+const missions = [
+  { name: 'First Contact', zone: 'Lumen Valley', units: 3, type: 'RESCUE BEACONS', description: 'Find the resonance route before the marine scouts do.' },
+  { name: 'Burning Canopy', zone: 'Sable Reach', units: 5, type: 'BREAK THE SIEGE', description: 'Cut a landing corridor through the occupation force.' },
+  { name: 'The Deep Signal', zone: 'Veil Reservoir', units: 7, type: 'DEFEND THE ARCHIVE', description: 'Protect the memory reef from excavation walkers.' },
+  { name: 'Dawnfall', zone: 'Skybreaker Rift', units: 9, type: 'STOP THE FLAGSHIP', description: 'Break the assault command before Nyxara is lost.' },
 ];
 
 function OrbitalButton({
@@ -70,6 +79,9 @@ export default function AlienWorldDefense() {
   const [scans, setScans] = useState(0);
   const [defenders, setDefenders] = useState(100);
   const [enemies, setEnemies] = useState(3);
+  const [missionIndex, setMissionIndex] = useState(0);
+  const [missionCursor, setMissionCursor] = useState(0);
+  const [clearedMissions, setClearedMissions] = useState<number[]>([]);
   const [pulseCount, setPulseCount] = useState(0);
   const [controllerMode, setControllerMode] = useState(false);
   const [isMoving, setIsMoving] = useState(false);
@@ -125,19 +137,105 @@ export default function AlienWorldDefense() {
     setScans((value) => Math.min(3, value + 1));
   };
 
+  const startMission = (index: number) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    setMissionIndex(index);
+    setScans(0);
+    setEnemies(missions[index].units);
+    setDefenders(100);
+    setPhase(index === 0 ? 'tutorial' : 'mission');
+  };
+
   const firePulse = () => {
     if (enemies === 0) return;
     energyPulse.seekTo(0);
     energyPulse.play();
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     setPulseCount((value) => value + 1);
-    setEnemies((value) => Math.max(0, value - 1));
+    if (enemies <= 1) {
+      setEnemies(0);
+      setClearedMissions((value) => value.includes(missionIndex) ? value : [...value, missionIndex]);
+      setTimeout(() => setPhase('debrief'), 420);
+    } else {
+      setEnemies((value) => value - 1);
+    }
     setDefenders((value) => Math.max(62, value - 7));
   };
 
   const completeTutorial = () => {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    setEnemies(missions[0].units);
     setPhase('mission');
+  };
+
+  const handleControllerKey = (event: GameKeyEvent) => {
+    const { code, key, repeat } = event.nativeEvent;
+    if (repeat) return;
+    setControllerMode(true);
+    const activate = code === 'Enter' || code === 'Space' || code === 'GamepadButton0';
+
+    if (phase === 'selection') {
+      if (code === 'ArrowLeft' || code === 'ArrowUp' || code === 'KeyA' || code === 'KeyW') {
+        const index = worlds.findIndex((world) => world.id === selectedWorld.id);
+        setSelectedWorld(worlds[(index + worlds.length - 1) % worlds.length]);
+      } else if (code === 'ArrowRight' || code === 'ArrowDown' || code === 'KeyD' || code === 'KeyS') {
+        const index = worlds.findIndex((world) => world.id === selectedWorld.id);
+        setSelectedWorld(worlds[(index + 1) % worlds.length]);
+      } else if (activate) {
+        startDeployment();
+      }
+      return;
+    }
+
+    if (phase === 'briefing') {
+      if (activate) setPhase('campaign');
+      return;
+    }
+
+    if (phase === 'campaign') {
+      if (code === 'ArrowLeft' || code === 'ArrowUp' || code === 'KeyA' || code === 'KeyW') {
+        setMissionCursor((value) => Math.max(0, value - 1));
+      } else if (code === 'ArrowRight' || code === 'ArrowDown' || code === 'KeyD' || code === 'KeyS') {
+        setMissionCursor((value) => Math.min(missions.length - 1, value + 1));
+      } else if (activate && (missionCursor === 0 || clearedMissions.includes(missionCursor - 1))) {
+        startMission(missionCursor);
+      }
+      return;
+    }
+
+    if (phase === 'debrief') {
+      if (activate) setPhase('campaign');
+      return;
+    }
+
+    if (activate) {
+      if (phase === 'tutorial') {
+        if (scans < 3) scanBeacon();
+        else completeTutorial();
+      } else {
+        firePulse();
+      }
+      return;
+    }
+
+    if (code === 'ArrowUp' || code === 'KeyW') {
+      setIsMoving(true);
+    } else if (code === 'ArrowLeft' || code === 'KeyA') {
+      setAim({ x: -18, y: 0 });
+    } else if (code === 'ArrowRight' || code === 'KeyD') {
+      setAim({ x: 18, y: 0 });
+    }
+  };
+
+  const handleControllerKeyUp = () => {
+    setIsMoving(false);
+    setAim({ x: 0, y: 0 });
+  };
+
+  const controllerEvents = {
+    focusable: true,
+    onKeyDown: handleControllerKey,
+    onKeyUp: handleControllerKeyUp,
   };
 
   const contentTop = { paddingTop: Math.max(insets.top, Platform.OS === 'web' ? 67 : 12) };
@@ -145,7 +243,7 @@ export default function AlienWorldDefense() {
 
   if (phase === 'selection') {
     return (
-      <ImageBackground source={require('../assets/images/six-worlds.jpg')} style={styles.fill} resizeMode="cover">
+      <ImageBackground {...controllerEvents} source={require('../assets/images/six-worlds.jpg')} style={styles.fill} resizeMode="cover">
         <LinearGradient colors={[`${colors.background}E6`, `${colors.background}CC`, colors.background]} style={styles.fill}>
           <View style={[stylesForTheme.selection, contentTop, contentBottom]}>
             <View style={stylesForTheme.brandRow}>
@@ -195,7 +293,7 @@ export default function AlienWorldDefense() {
 
   if (phase === 'briefing') {
     return (
-      <ImageBackground source={require('../assets/images/nyxara-horizon.jpg')} style={styles.fill} resizeMode="cover">
+      <ImageBackground {...controllerEvents} source={require('../assets/images/nyxara-horizon.jpg')} style={styles.fill} resizeMode="cover">
         <LinearGradient colors={[`${colors.background}66`, `${colors.background}E8`]} style={styles.fill}>
           <View style={[stylesForTheme.cutscene, contentTop, contentBottom]}>
             <View style={stylesForTheme.cutsceneTop}>
@@ -209,10 +307,58 @@ export default function AlienWorldDefense() {
                 <View style={stylesForTheme.voiceWave}><View style={stylesForTheme.wave} /><View style={stylesForTheme.waveTall} /><View style={stylesForTheme.wave} /></View>
               </View>
               <Text style={stylesForTheme.dialogue}>“Wake, defender. Your world has chosen you. The invaders are already in the valley.”</Text>
-              <Pressable testID="continue-briefing" onPress={() => setPhase('tutorial')} style={stylesForTheme.continueButton}>
-                <Text style={stylesForTheme.continueText}>ENTER THE VALLEY</Text><Feather name="chevron-right" size={20} color={colors.primary} />
+              <Pressable testID="continue-briefing" onPress={() => setPhase('campaign')} style={stylesForTheme.continueButton}>
+                <Text style={stylesForTheme.continueText}>OPEN WAR ROOM</Text><Feather name="chevron-right" size={20} color={colors.primary} />
               </Pressable>
             </View>
+          </View>
+        </LinearGradient>
+      </ImageBackground>
+    );
+  }
+
+  if (phase === 'campaign') {
+    return (
+      <ImageBackground {...controllerEvents} source={require('../assets/images/six-worlds.jpg')} style={styles.fill} resizeMode="cover">
+        <LinearGradient colors={[`${colors.background}D9`, `${colors.background}B3`, colors.background]} style={styles.fill}>
+          <View style={[stylesForTheme.campaign, contentTop, contentBottom]}>
+            <View style={stylesForTheme.warRoomHeader}>
+              <View><Text style={stylesForTheme.kicker}>NYXARA DEFENSE GRID</Text><Text style={stylesForTheme.warRoomTitle}>Choose the next operation.</Text></View>
+              <View style={stylesForTheme.sectorPill}><MaterialCommunityIcons name="shield-star-outline" size={18} color={colors.primary} /><Text style={stylesForTheme.sectorText}>{clearedMissions.length}/4 SECURED</Text></View>
+            </View>
+            <View style={stylesForTheme.missionGrid}>
+              {missions.map((mission, index) => {
+                const complete = clearedMissions.includes(index);
+                const locked = index > 0 && !clearedMissions.includes(index - 1);
+                return <Pressable key={mission.name} testID={`mission-${index}`} disabled={locked} onPress={() => startMission(index)} style={({ pressed }) => [stylesForTheme.missionCard, { opacity: locked ? 0.43 : pressed ? 0.76 : 1, borderColor: complete ? colors.primary : index === missionCursor ? colors.accent : colors.border }]}>
+                  <View style={stylesForTheme.missionIndex}><Text style={stylesForTheme.missionIndexText}>0{index + 1}</Text>{complete ? <Feather name="check-circle" size={17} color={colors.primary} /> : locked ? <Feather name="lock" size={15} color={colors.mutedForeground} /> : <Feather name="play" size={15} color={colors.accent} />}</View>
+                  <Text style={stylesForTheme.missionType}>{mission.type}</Text>
+                  <Text style={stylesForTheme.missionName}>{mission.name}</Text>
+                  <Text style={stylesForTheme.missionZone}>{mission.zone}</Text>
+                  <Text style={stylesForTheme.missionDescription}>{mission.description}</Text>
+                  <View style={stylesForTheme.missionFooter}><MaterialCommunityIcons name="robot-outline" size={16} color={colors.accent} /><Text style={stylesForTheme.missionUnits}>{mission.units} HOSTILES EXPECTED</Text></View>
+                </Pressable>;
+              })}
+            </View>
+            <Text style={stylesForTheme.warRoomHint}>Every operation unlocks a new sector of the invasion. The council signal will guide you between deployments.</Text>
+          </View>
+        </LinearGradient>
+      </ImageBackground>
+    );
+  }
+
+  if (phase === 'debrief') {
+    const finalMission = missionIndex === missions.length - 1;
+    return (
+      <ImageBackground {...controllerEvents} source={require('../assets/images/nyxara-horizon.jpg')} style={styles.fill} resizeMode="cover">
+        <LinearGradient colors={[`${colors.background}99`, `${colors.background}E8`]} style={styles.fill}>
+          <View style={[stylesForTheme.debrief, contentTop, contentBottom]}>
+            <View style={stylesForTheme.debriefSeal}><Feather name={finalMission ? 'sun' : 'shield'} size={34} color={colors.primary} /></View>
+            <Text style={stylesForTheme.kicker}>{finalMission ? 'CHAPTER ONE COMPLETE' : 'OPERATION COMPLETE'}</Text>
+            <Text style={stylesForTheme.debriefTitle}>{finalMission ? 'Nyxara holds.' : `${missions[missionIndex].name} secured.`}</Text>
+            <Text style={stylesForTheme.debriefCopy}>{finalMission ? 'The marine flagship has broken orbit. The sky is ours tonight—but the solar system is still under siege.' : 'The resistance has recovered a new defense corridor. Human command is preparing its next offensive.'}</Text>
+            <View style={stylesForTheme.debriefStats}><View><Text style={stylesForTheme.statValue}>{defenders}%</Text><Text style={stylesForTheme.statLabel}>SHIELD REMAINING</Text></View><View><Text style={stylesForTheme.statValue}>{missions[missionIndex].units}</Text><Text style={stylesForTheme.statLabel}>HOSTILES REPELLED</Text></View><View><Text style={stylesForTheme.statValue}>A</Text><Text style={stylesForTheme.statLabel}>DEFENSE RANK</Text></View></View>
+            <Pressable testID="continue-campaign" onPress={() => setPhase('campaign')} style={stylesForTheme.debriefButton}><Text style={stylesForTheme.deployText}>{finalMission ? 'RETURN TO WAR ROOM' : 'VIEW NEXT OPERATION'}</Text><Feather name="arrow-right" size={19} color={colors.primaryForeground} /></Pressable>
           </View>
         </LinearGradient>
       </ImageBackground>
@@ -222,11 +368,11 @@ export default function AlienWorldDefense() {
   const isTutorial = phase === 'tutorial';
   const objective = isTutorial
     ? scans < 3 ? `Locate resonance beacons · ${scans}/3` : 'Resonance route stable · unlock defense shard'
-    : enemies > 0 ? `Repel landing unit · ${enemies} walkers active` : 'Lumen Valley secured';
+    : enemies > 0 ? `${missions[missionIndex].type} · ${enemies} units active` : `${missions[missionIndex].zone} secured`;
 
   return (
-    <View style={styles.fill}>
-      <AlienBattlefield aim={aim} moving={isMoving} enemyCount={enemies} tutorial={isTutorial} pulseCount={pulseCount} />
+    <View {...controllerEvents} style={styles.fill}>
+      <AlienBattlefield aim={aim} moving={isMoving} enemyCount={enemies} tutorial={isTutorial} pulseCount={pulseCount} missionIndex={missionIndex} />
       <LinearGradient colors={[`${colors.background}2B`, `${colors.background}30`, `${colors.background}92`]} style={styles.fill}>
         <View style={[styles.fill, contentTop, contentBottom]}>
           <HudCorner style={styles.topLeft}>
@@ -354,5 +500,29 @@ function createStyles(colors: ReturnType<typeof useColors>) {
     actionCluster: { alignItems: 'center', gap: 3 },
     actionButton: { width: 86, height: 86, borderRadius: 43, alignItems: 'center', justifyContent: 'center', borderWidth: 3, borderColor: `${colors.foreground}90` },
     actionText: { fontSize: 10, fontWeight: '900', letterSpacing: 1, marginTop: 1 },
+    campaign: { flex: 1, paddingHorizontal: 28, justifyContent: 'space-between' },
+    warRoomHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+    warRoomTitle: { color: colors.foreground, fontSize: 25, fontWeight: '800', marginTop: 5 },
+    sectorPill: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 11, paddingVertical: 8, backgroundColor: `${colors.background}B8`, borderWidth: 1, borderColor: colors.border, borderRadius: 18 },
+    sectorText: { color: colors.primary, fontSize: 10, fontWeight: '900', letterSpacing: 1 },
+    missionGrid: { flexDirection: 'row', gap: 12, justifyContent: 'center' },
+    missionCard: { width: '23%', minHeight: 210, borderRadius: 16, borderWidth: 1, padding: 13, backgroundColor: `${colors.background}DC`, justifyContent: 'space-between' },
+    missionIndex: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+    missionIndexText: { color: colors.mutedForeground, fontSize: 12, fontWeight: '900', letterSpacing: 1.4 },
+    missionType: { color: colors.primary, fontSize: 9, fontWeight: '900', letterSpacing: 1.2, marginTop: 10 },
+    missionName: { color: colors.foreground, fontSize: 18, fontWeight: '800', marginTop: 3 },
+    missionZone: { color: colors.accent, fontSize: 11, fontWeight: '700', marginTop: 2 },
+    missionDescription: { color: colors.mutedForeground, fontSize: 11, lineHeight: 15, marginTop: 10 },
+    missionFooter: { borderTopWidth: 1, borderColor: colors.border, paddingTop: 8, flexDirection: 'row', gap: 5, alignItems: 'center', marginTop: 12 },
+    missionUnits: { color: colors.mutedForeground, fontSize: 9, fontWeight: '800', letterSpacing: 0.5 },
+    warRoomHint: { color: colors.mutedForeground, fontSize: 11, textAlign: 'center', alignSelf: 'center', maxWidth: '62%' },
+    debrief: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: '18%' },
+    debriefSeal: { width: 78, height: 78, borderRadius: 39, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: colors.primary, backgroundColor: `${colors.primary}1D` },
+    debriefTitle: { color: colors.foreground, fontSize: 32, fontWeight: '900', marginTop: 4, textAlign: 'center' },
+    debriefCopy: { color: colors.mutedForeground, fontSize: 14, lineHeight: 20, textAlign: 'center', maxWidth: 560, marginTop: 10 },
+    debriefStats: { flexDirection: 'row', gap: 55, marginTop: 22, marginBottom: 22 },
+    statValue: { color: colors.primary, fontSize: 25, fontWeight: '900', textAlign: 'center' },
+    statLabel: { color: colors.mutedForeground, fontSize: 9, fontWeight: '900', letterSpacing: 0.8, textAlign: 'center', marginTop: 2 },
+    debriefButton: { flexDirection: 'row', gap: 8, alignItems: 'center', backgroundColor: colors.primary, paddingHorizontal: 18, paddingVertical: 13, borderRadius: 13 },
   });
 }
