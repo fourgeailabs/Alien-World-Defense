@@ -6,6 +6,7 @@ import { ImageBackground, PanResponder, Platform, Pressable, StyleSheet, Text, V
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useColors } from '@/hooks/useColors';
+import { AlienBattlefield } from '@/components/AlienBattlefield';
 
 type Phase = 'selection' | 'briefing' | 'tutorial' | 'mission' | 'victory';
 
@@ -69,6 +70,7 @@ export default function AlienWorldDefense() {
   const [scans, setScans] = useState(0);
   const [defenders, setDefenders] = useState(100);
   const [enemies, setEnemies] = useState(3);
+  const [pulseCount, setPulseCount] = useState(0);
   const [controllerMode, setControllerMode] = useState(false);
   const [isMoving, setIsMoving] = useState(false);
   const [aim, setAim] = useState({ x: 0, y: 0 });
@@ -128,6 +130,7 @@ export default function AlienWorldDefense() {
     energyPulse.seekTo(0);
     energyPulse.play();
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    setPulseCount((value) => value + 1);
     setEnemies((value) => Math.max(0, value - 1));
     setDefenders((value) => Math.max(62, value - 7));
   };
@@ -222,8 +225,9 @@ export default function AlienWorldDefense() {
     : enemies > 0 ? `Repel landing unit · ${enemies} walkers active` : 'Lumen Valley secured';
 
   return (
-    <ImageBackground source={require('../assets/images/nyxara-horizon.jpg')} style={styles.fill} resizeMode="cover">
-      <LinearGradient colors={[`${colors.background}6B`, `${colors.background}62`, `${colors.background}B0`]} style={styles.fill}>
+    <View style={styles.fill}>
+      <AlienBattlefield aim={aim} moving={isMoving} enemyCount={enemies} tutorial={isTutorial} pulseCount={pulseCount} />
+      <LinearGradient colors={[`${colors.background}2B`, `${colors.background}30`, `${colors.background}92`]} style={styles.fill}>
         <View style={[styles.fill, contentTop, contentBottom]}>
           <HudCorner style={styles.topLeft}>
             <View style={[stylesForTheme.healthBar, { width: 100 }]}><View style={[stylesForTheme.healthFill, { width: `${defenders}%` }]} /></View>
@@ -269,7 +273,7 @@ export default function AlienWorldDefense() {
           </View>
         </View>
       </LinearGradient>
-    </ImageBackground>
+    </View>
   );
 }
 
